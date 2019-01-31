@@ -10,6 +10,8 @@ namespace Illuminatech\MultipartMiddleware;
 use Closure;
 use Illuminate\Support\Arr;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\FileBag;
+use Symfony\Component\HttpFoundation\ParameterBag;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 /**
@@ -30,23 +32,28 @@ class MultipartFormDataParser
     /**
      * @var int upload file max size in bytes.
      */
-    private $_uploadFileMaxSize;
+    private $uploadFileMaxSize;
 
     /**
      * @var int maximum upload files count.
      */
-    private $_uploadFileMaxCount;
+    private $uploadFileMaxCount;
+
+    /**
+     * @var resource[]
+     */
+    private $tmpFileResources = [];
 
     /**
      * @return int upload file max size in bytes.
      */
     public function getUploadFileMaxSize(): int
     {
-        if ($this->_uploadFileMaxSize === null) {
-            $this->_uploadFileMaxSize = $this->getByteSize(ini_get('upload_max_filesize'));
+        if ($this->uploadFileMaxSize === null) {
+            $this->uploadFileMaxSize = $this->getByteSize(ini_get('upload_max_filesize'));
         }
 
-        return $this->_uploadFileMaxSize;
+        return $this->uploadFileMaxSize;
     }
     /**
      * @param  int  $uploadFileMaxSize upload file max size in bytes.
@@ -54,7 +61,7 @@ class MultipartFormDataParser
      */
     public function setUploadFileMaxSize(int $uploadFileMaxSize): self
     {
-        $this->_uploadFileMaxSize = $uploadFileMaxSize;
+        $this->uploadFileMaxSize = $uploadFileMaxSize;
 
         return $this;
     }
@@ -63,11 +70,11 @@ class MultipartFormDataParser
      */
     public function getUploadFileMaxCount(): int
     {
-        if ($this->_uploadFileMaxCount === null) {
-            $this->_uploadFileMaxCount = ini_get('max_file_uploads');
+        if ($this->uploadFileMaxCount === null) {
+            $this->uploadFileMaxCount = ini_get('max_file_uploads');
         }
 
-        return $this->_uploadFileMaxCount;
+        return $this->uploadFileMaxCount;
     }
     /**
      * @param int $uploadFileMaxCount maximum upload files count.
@@ -75,7 +82,7 @@ class MultipartFormDataParser
      */
     public function setUploadFileMaxCount(int $uploadFileMaxCount): self
     {
-        $this->_uploadFileMaxCount = $uploadFileMaxCount;
+        $this->uploadFileMaxCount = $uploadFileMaxCount;
 
         return $this;
     }
@@ -101,7 +108,7 @@ class MultipartFormDataParser
 
     public function parse(Request $request): Request
     {
-        $contentType = $request->getContentType();
+        $contentType = $request->headers->get('CONTENT_TYPE');
         if (stripos($contentType, 'multipart/form-data') === false) {
             return $request;
         }
@@ -129,9 +136,11 @@ class MultipartFormDataParser
             }
             [$headers, $value] = preg_split('/\\R\\R/', $bodyPart, 2);
             $headers = $this->parseHeaders($headers);
+
             if (!isset($headers['content-disposition']['name'])) {
                 continue;
             }
+
             if (isset($headers['content-disposition']['filename'])) {
                 // file upload:
                 if ($filesCount >= $this->getUploadFileMaxCount()) {
@@ -143,24 +152,27 @@ class MultipartFormDataParser
                     'clientMediaType' => Arr::get($headers, 'content-type', 'application/octet-stream'),
                     'size' => mb_strlen($value, '8bit'),
                     'error' => UPLOAD_ERR_OK,
-                    'tempFilename' => null,
+                    'tempFilename' => '',
                 ];
+
                 if ($fileConfig['size'] > $this->getUploadFileMaxSize()) {
                     $fileConfig['error'] = UPLOAD_ERR_INI_SIZE;
                 } else {
                     $tmpResource = tmpfile();
+
                     if ($tmpResource === false) {
                         $fileConfig['error'] = UPLOAD_ERR_CANT_WRITE;
                     } else {
                         $tmpResourceMetaData = stream_get_meta_data($tmpResource);
                         $tmpFileName = $tmpResourceMetaData['uri'];
+
                         if (empty($tmpFileName)) {
                             $fileConfig['error'] = UPLOAD_ERR_CANT_WRITE;
                             @fclose($tmpResource);
                         } else {
                             fwrite($tmpResource, $value);
                             $fileConfig['tempFilename'] = $tmpFileName;
-                            $fileConfig['stream'] = $tmpResource; // save file resource, otherwise it will be deleted
+                            $this->tmpFileResources[] = $tmpResource; // save file resource, otherwise it will be deleted
                         }
                     }
                 }
@@ -172,8 +184,8 @@ class MultipartFormDataParser
             }
         }
 
-        $request->request = $bodyParams;
-        $request->files = $uploadedFiles;
+        $request->request = new ParameterBag($bodyParams);
+        $request->files = new FileBag($uploadedFiles);
 
         return $request;
     }
