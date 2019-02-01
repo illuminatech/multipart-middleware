@@ -225,7 +225,7 @@ class MultipartFormDataParser
      * @param  int|null  $error the error associated with the uploaded file.
      * @return UploadedFile|object new uploaded file instance.
      */
-    protected function createUploadedFile(string $tempFilename, string $clientFilename, string $clientMediaType = null, int $error = null): object
+    protected function createUploadedFile(string $tempFilename, string $clientFilename, string $clientMediaType = null, int $error = null)
     {
         return new UploadedFile($tempFilename, $clientFilename, $clientMediaType, $error, true);
     }
