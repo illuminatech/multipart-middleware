@@ -171,7 +171,6 @@ class MultipartFormDataParserTest extends TestCase
     public function testForce()
     {
         $parser = new MultipartFormDataParser();
-        $parser->force = true;
 
         $boundary = '---------------------------22472926011618';
         $contentType = 'multipart/form-data; boundary=' . $boundary;
@@ -182,7 +181,7 @@ class MultipartFormDataParserTest extends TestCase
         $request = $this->createRequest(['content-type' => [$contentType]], $rawBody, 'POST');
         $request->files->set('file', new UploadedFile(__FILE__, 'test.txt'));
 
-        $handledRequest = $parser->handle($request, $this->createDummyRequestHandler());
+        $handledRequest = $parser->handle($request, $this->createDummyRequestHandler(), true);
 
         $uploadedFiles = $handledRequest->files->all();
         $this->assertNotEmpty($uploadedFiles['someFile']);

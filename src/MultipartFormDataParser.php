@@ -23,13 +23,6 @@ use Symfony\Component\HttpFoundation\File\UploadedFile;
 class MultipartFormDataParser
 {
     /**
-     * @var bool whether to parse raw body even for 'POST' request and `Request::$files` already populated.
-     * By default this option is disabled saving performance for 'POST' requests, which are already
-     * processed by PHP automatically.
-     */
-    public $force = false;
-
-    /**
      * @var int upload file max size in bytes.
      */
     private $uploadFileMaxSize;
@@ -50,14 +43,14 @@ class MultipartFormDataParser
     public function getUploadFileMaxSize(): int
     {
         if ($this->uploadFileMaxSize === null) {
-            $this->uploadFileMaxSize = $this->getByteSize(ini_get('upload_max_filesize'));
+            $this->uploadFileMaxSize = UploadedFile::getMaxFilesize();
         }
 
         return $this->uploadFileMaxSize;
     }
     /**
      * @param  int  $uploadFileMaxSize upload file max size in bytes.
-     * @return static self reference
+     * @return static self reference.
      */
     public function setUploadFileMaxSize(int $uploadFileMaxSize): self
     {
@@ -78,7 +71,7 @@ class MultipartFormDataParser
     }
     /**
      * @param int $uploadFileMaxCount maximum upload files count.
-     * @return static self reference
+     * @return static self reference.
      */
     public function setUploadFileMaxCount(int $uploadFileMaxCount): self
     {
@@ -88,15 +81,16 @@ class MultipartFormDataParser
     }
 
     /**
-     * Handle an incoming request.
+     * Handle an incoming request, performing its 'multipart/form-data' content parsing if necessary.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \Closure  $next
+     * @param  \Illuminate\Http\Request  $request request to be processed.
+     * @param  \Closure  $next next pipeline request handler.
+     * @param  bool  $force whether to parse raw body even for 'POST' request and `Request::$files` are already populated.
      * @return mixed
      */
-    public function handle(Request $request, Closure $next)
+    public function handle(Request $request, Closure $next, $force = false)
     {
-        if (!$this->force) {
+        if (! $force) {
             if ($request->getRealMethod() === 'POST' || count($request->files) > 0) {
                 // normal POST request is parsed by PHP automatically
                 return $next($request);
@@ -106,13 +100,21 @@ class MultipartFormDataParser
         return $next($this->parse($request));
     }
 
+    /**
+     * Parses given request in case it holds 'multipart/form-data' content.
+     * This method is immutable: it leaves passed request object intact, creating new one for parsed results.
+     * This method returns original request in case it does not hold appropriate content type or has empty body.
+     *
+     * @param  Request  $request request to be parsed.
+     * @return Request parsed request.
+     */
     public function parse(Request $request): Request
     {
         $contentType = $request->headers->get('CONTENT_TYPE');
         if (stripos($contentType, 'multipart/form-data') === false) {
             return $request;
         }
-        if (!preg_match('/boundary=(.*)$/is', $contentType, $matches)) {
+        if (! preg_match('/boundary=(.*)$/is', $contentType, $matches)) {
             return $request;
         }
         $boundary = $matches[1];
@@ -121,8 +123,6 @@ class MultipartFormDataParser
         if (empty($rawBody)) {
             return $request;
         }
-
-        $request = clone $request;
 
         $bodyParts = preg_split('/\\R?-+' . preg_quote($boundary, '/') . '/s', $rawBody);
         array_pop($bodyParts); // last block always has no data, contains boundary ending like `--`
@@ -134,10 +134,11 @@ class MultipartFormDataParser
             if (empty($bodyPart)) {
                 continue;
             }
+
             [$headers, $value] = preg_split('/\\R\\R/', $bodyPart, 2);
             $headers = $this->parseHeaders($headers);
 
-            if (!isset($headers['content-disposition']['name'])) {
+            if (! isset($headers['content-disposition']['name'])) {
                 continue;
             }
 
@@ -147,42 +148,67 @@ class MultipartFormDataParser
                     continue;
                 }
 
-                $fileConfig = [
-                    'clientFilename' => $headers['content-disposition']['filename'],
-                    'clientMediaType' => Arr::get($headers, 'content-type', 'application/octet-stream'),
-                    'size' => mb_strlen($value, '8bit'),
-                    'error' => UPLOAD_ERR_OK,
-                    'tempFilename' => '',
-                ];
+                $clientFilename = $headers['content-disposition']['filename'];
+                $clientMediaType = Arr::get($headers, 'content-type', 'application/octet-stream');
+                $size = mb_strlen($value, '8bit');
+                $error = UPLOAD_ERR_OK;
+                $tempFilename = '';
 
-                if ($fileConfig['size'] > $this->getUploadFileMaxSize()) {
-                    $fileConfig['error'] = UPLOAD_ERR_INI_SIZE;
+                if ($size > $this->getUploadFileMaxSize()) {
+                    $error = UPLOAD_ERR_INI_SIZE;
                 } else {
                     $tmpResource = tmpfile();
 
                     if ($tmpResource === false) {
-                        $fileConfig['error'] = UPLOAD_ERR_CANT_WRITE;
+                        $error = UPLOAD_ERR_CANT_WRITE;
                     } else {
                         $tmpResourceMetaData = stream_get_meta_data($tmpResource);
                         $tmpFileName = $tmpResourceMetaData['uri'];
 
                         if (empty($tmpFileName)) {
-                            $fileConfig['error'] = UPLOAD_ERR_CANT_WRITE;
+                            $error = UPLOAD_ERR_CANT_WRITE;
                             @fclose($tmpResource);
                         } else {
                             fwrite($tmpResource, $value);
-                            $fileConfig['tempFilename'] = $tmpFileName;
+                            $tempFilename = $tmpFileName;
                             $this->tmpFileResources[] = $tmpResource; // save file resource, otherwise it will be deleted
                         }
                     }
                 }
-                $this->addValue($uploadedFiles, $headers['content-disposition']['name'], $this->createUploadedFile($fileConfig));
+
+                $this->addValue(
+                    $uploadedFiles,
+                    $headers['content-disposition']['name'],
+                    $this->createUploadedFile(
+                        $tempFilename,
+                        $clientFilename,
+                        $clientMediaType,
+                        $error
+                    )
+                );
+
                 $filesCount++;
             } else {
                 // regular parameter:
                 $this->addValue($bodyParams, $headers['content-disposition']['name'], $value);
             }
         }
+
+        return $this->newRequest($request, $bodyParams, $uploadedFiles);
+    }
+
+    /**
+     * Creates new request instance from original one with parsed body parameters and uploaded files.
+     * This method is called only in case original request has been successfully parsed as 'multipart/form-data'.
+     *
+     * @param  Request  $originalRequest original request instance being parsed.
+     * @param  array  $bodyParams parsed body parameters.
+     * @param  array  $uploadedFiles parsed uploaded files.
+     * @return Request new request instance.
+     */
+    protected function newRequest(Request $originalRequest, array $bodyParams, array $uploadedFiles): Request
+    {
+        $request = clone $originalRequest;
 
         $request->request = new ParameterBag($bodyParams);
         $request->files = new FileBag($uploadedFiles);
@@ -191,7 +217,22 @@ class MultipartFormDataParser
     }
 
     /**
+     * Creates new uploaded file instance.
+     *
+     * @param  string  $tempFilename the full temporary path to the file.
+     * @param  string  $clientFilename the filename sent by the client.
+     * @param  string|null  $clientMediaType the media type sent by the client.
+     * @param  int|null  $error the error associated with the uploaded file.
+     * @return UploadedFile|object new uploaded file instance.
+     */
+    protected function createUploadedFile(string $tempFilename, string $clientFilename, string $clientMediaType = null, int $error = null): object
+    {
+        return new UploadedFile($tempFilename, $clientFilename, $clientMediaType, $error, true);
+    }
+
+    /**
      * Parses content part headers.
+     *
      * @param  string  $headerContent headers source content
      * @return array parsed headers.
      */
@@ -199,6 +240,7 @@ class MultipartFormDataParser
     {
         $headers = [];
         $headerParts = preg_split('/\\R/s', $headerContent, -1, PREG_SPLIT_NO_EMPTY);
+
         foreach ($headerParts as $headerPart) {
             if (strpos($headerPart, ':') === false) {
                 continue;
@@ -231,11 +273,12 @@ class MultipartFormDataParser
 
     /**
      * Adds value to the array by input name, e.g. `Item[name]`.
+     *
      * @param  array  $array array which should store value.
      * @param  string  $name input name specification.
      * @param mixed $value value to be added.
      */
-    private function addValue(&$array, $name, $value)
+    private function addValue(&$array, $name, $value): void
     {
         $nameParts = preg_split('/\\]\\[|\\[/s', $name);
         $current = &$array;
@@ -247,55 +290,12 @@ class MultipartFormDataParser
                 $lastKey = array_pop($keys);
                 $current = &$current[$lastKey];
             } else {
-                if (!isset($current[$namePart])) {
+                if (! isset($current[$namePart])) {
                     $current[$namePart] = [];
                 }
                 $current = &$current[$namePart];
             }
         }
         $current = $value;
-    }
-
-    private function createUploadedFile(array $config)
-    {
-        return new UploadedFile($config['tempFilename'], $config['clientFilename'], $config['clientMediaType'], $config['error'], true);
-    }
-
-    /**
-     * Gets the size in bytes from verbose size representation.
-     *
-     * For example: '5K' => 5*1024.
-     * @param  string  $verboseSize verbose size representation.
-     * @return int actual size in bytes.
-     */
-    private function getByteSize($verboseSize): int
-    {
-        if (empty($verboseSize)) {
-            return 0;
-        }
-
-        if (is_numeric($verboseSize)) {
-            return (int) $verboseSize;
-        }
-
-        $sizeUnit = trim($verboseSize, '0123456789');
-        $size = trim(str_replace($sizeUnit, '', $verboseSize));
-        if (!is_numeric($size)) {
-            return 0;
-        }
-
-        switch (strtolower($sizeUnit)) {
-            case 'kb':
-            case 'k':
-                return $size * 1024;
-            case 'mb':
-            case 'm':
-                return $size * 1024 * 1024;
-            case 'gb':
-            case 'g':
-                return $size * 1024 * 1024 * 1024;
-            default:
-                return 0;
-        }
     }
 }
