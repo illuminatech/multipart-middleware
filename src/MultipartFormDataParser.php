@@ -15,7 +15,38 @@ use Symfony\Component\HttpFoundation\ParameterBag;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 /**
- * MultipartFormDataParser
+ * MultipartFormDataParser is a middleware for parsing 'multipart/form-data' HTTP requests.
+ *
+ * This middleware provides ability to parse 'multipart/form-data' HTTP requests for any request method, including 'PUT',
+ * 'PATCH' and so on without necessity to spoof it using '_method' parameter.
+ *
+ * This middleware should be applied to your HTTP kernel prior to any other middleware, which operates input data.
+ * For example:
+ *
+ * ```php
+ * namespace App\Http;
+ *
+ * use Illuminate\Foundation\Http\Kernel as HttpKernel;
+ *
+ * class Kernel extends HttpKernel
+ * {
+ *     protected $middleware = [
+ *         \App\Http\Middleware\CheckForMaintenanceMode::class,
+ *         \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
+ *         \Illuminatech\MultipartMiddleware\MultipartFormDataParser::class, // parse multipart request, before operating input
+ *         \App\Http\Middleware\TrimStrings::class,
+ *         \Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull::class,
+ *         // ...
+ *     ];
+ *     // ...
+ * }
+ * ```
+ *
+ * > Note: although this parser populates temporary file name for the uploaded file instance, such temporary file will
+ * not be recognized by PHP as uploaded one. Thus functions like `is_uploaded_file()` and `move_uploaded_file()` will
+ * fail on it. Thus all created uploaded file instances are marked as test ones.
+ *
+ * > Attention: all created temporary files will be automatically deleted, once middleware instance is destroyed.
  *
  * @author Paul Klimov <klimov.paul@gmail.com>
  * @since 1.0
@@ -33,7 +64,7 @@ class MultipartFormDataParser
     private $uploadFileMaxCount;
 
     /**
-     * @var resource[]
+     * @var resource[] resources for temporary file, created during request parsing.
      */
     private $tmpFileResources = [];
 
@@ -297,5 +328,30 @@ class MultipartFormDataParser
             }
         }
         $current = $value;
+    }
+
+    /**
+     * Closes all temporary files associated with this parser instance.
+     *
+     * @return static self instance.
+     */
+    public function closeTmpFiles(): self
+    {
+        foreach ($this->tmpFileResources as $resource) {
+            @fclose($resource);
+        }
+
+        $this->tmpFileResources = [];
+
+        return $this;
+    }
+
+    /**
+     * Destructor.
+     * Ensures all possibly created during parsing temporary files are gracefully closed and removed.
+     */
+    public function __destruct()
+    {
+        $this->closeTmpFiles();
     }
 }
