@@ -16,7 +16,6 @@
         }
     ],
     "require": {
-        "php" : "^7.0",
         "illuminate/http": "^5.1"
     },
     "autoload": {
