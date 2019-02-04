@@ -2,7 +2,6 @@
     "name": "illuminatech/multipart-middleware",
     "description": "'multipart/form-data' parser middleware for Laravel",
     "keywords": ["laravel", "middleware", "multipart", "request", "parser"],
-    "type": "yii2-extension",
     "license": "BSD-3-Clause",
     "support": {
         "issues": "https://github.com/illuminatech/multipart-middleware/issues",
