@@ -10,9 +10,9 @@ namespace Illuminatech\MultipartMiddleware;
 use Closure;
 use Illuminate\Support\Arr;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Symfony\Component\HttpFoundation\FileBag;
 use Symfony\Component\HttpFoundation\ParameterBag;
-use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 /**
  * MultipartFormDataParser is a middleware for parsing 'multipart/form-data' HTTP requests.
@@ -136,8 +136,8 @@ class MultipartFormDataParser
      * This method is immutable: it leaves passed request object intact, creating new one for parsed results.
      * This method returns original request in case it does not hold appropriate content type or has empty body.
      *
-     * @param  Request  $request request to be parsed.
-     * @return Request parsed request.
+     * @param  \Illuminate\Http\Request  $request request to be parsed.
+     * @return \Illuminate\Http\Request parsed request.
      */
     public function parse(Request $request): Request
     {
@@ -232,10 +232,10 @@ class MultipartFormDataParser
      * Creates new request instance from original one with parsed body parameters and uploaded files.
      * This method is called only in case original request has been successfully parsed as 'multipart/form-data'.
      *
-     * @param  Request  $originalRequest original request instance being parsed.
+     * @param  \Illuminate\Http\Request  $originalRequest original request instance being parsed.
      * @param  array  $bodyParams parsed body parameters.
      * @param  array  $uploadedFiles parsed uploaded files.
-     * @return Request new request instance.
+     * @return \Illuminate\Http\Request new request instance.
      */
     protected function newRequest(Request $originalRequest, array $bodyParams, array $uploadedFiles): Request
     {
@@ -254,7 +254,7 @@ class MultipartFormDataParser
      * @param  string  $clientFilename the filename sent by the client.
      * @param  string|null  $clientMediaType the media type sent by the client.
      * @param  int|null  $error the error associated with the uploaded file.
-     * @return UploadedFile|object new uploaded file instance.
+     * @return \Symfony\Component\HttpFoundation\File\UploadedFile|object new uploaded file instance.
      */
     protected function createUploadedFile(string $tempFilename, string $clientFilename, string $clientMediaType = null, int $error = null)
     {
