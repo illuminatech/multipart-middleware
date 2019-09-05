@@ -10,8 +10,8 @@ This extension provides ability to parse 'multipart/form-data' HTTP requests for
 
 For license information check the [LICENSE](LICENSE.md)-file.
 
-[![Latest Stable Version](https://poser.pugx.org/illuminatech/multipart-middleware/v/stable.png)](https://packagist.org/packages/illuminatech/multipart-middleware)
-[![Total Downloads](https://poser.pugx.org/illuminatech/multipart-middleware/downloads.png)](https://packagist.org/packages/illuminatech/multipart-middleware)
+[![Latest Stable Version](https://img.shields.io/packagist/v/illuminatech/multipart-middleware.svg)](https://packagist.org/packages/illuminatech/multipart-middleware)
+[![Total Downloads](https://img.shields.io/packagist/dt/illuminatech/multipart-middleware.svg)](https://packagist.org/packages/illuminatech/multipart-middleware)
 [![Build Status](https://travis-ci.org/illuminatech/multipart-middleware.svg?branch=master)](https://travis-ci.org/illuminatech/multipart-middleware)
 
 
@@ -43,7 +43,7 @@ This extension provides ability to parse 'multipart/form-data' HTTP requests for
 
 This allows REST client, interacting with your application, to use modern strict flow involving file uploading.
 
-It is provided via [[\Illuminatech\MultipartMiddleware\MultipartFormDataParser]] middleware.
+It is provided via `\Illuminatech\MultipartMiddleware\MultipartFormDataParser` middleware.
 This middleware should be applied to your HTTP kernel prior to any other middleware, which operates input data.
 For example:
 
@@ -68,13 +68,13 @@ class Kernel extends HttpKernel
 }
 ```
 
-[[\Illuminatech\MultipartMiddleware\MultipartFormDataParser]] will automatically parse any HTTP request with 'multipart/form-data'
+`\Illuminatech\MultipartMiddleware\MultipartFormDataParser` will automatically parse any HTTP request with 'multipart/form-data'
 content type, skipping only requests performed with 'POST' method as they are already parsed by PHP automatically.
 
 
 ## Enforcing parsing <span id="enforcing-parsing"></span>
 
-By default [[\Illuminatech\MultipartMiddleware\MultipartFormDataParser]] middleware skips requests performed via 'POST' method
+By default `\Illuminatech\MultipartMiddleware\MultipartFormDataParser` middleware skips requests performed via 'POST' method
 and the ones already containing uploaded files. This is done for performance reason, since PHP parses 'multipart/form-data'
 for POST requests automatically. However, it is not always a desirable behavior. You may need to enforce parsing of the
 POST requests in case you creating request instances manually in non standard way. For example, in case you are building
