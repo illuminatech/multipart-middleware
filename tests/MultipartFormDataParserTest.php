@@ -4,8 +4,8 @@ namespace Illuminatech\MultipartMiddleware\Test;
 
 use Closure;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Illuminatech\MultipartMiddleware\MultipartFormDataParser;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 class MultipartFormDataParserTest extends TestCase
 {
