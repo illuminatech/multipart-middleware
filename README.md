@@ -12,7 +12,7 @@ For license information check the [LICENSE](LICENSE.md)-file.
 
 [![Latest Stable Version](https://img.shields.io/packagist/v/illuminatech/multipart-middleware.svg)](https://packagist.org/packages/illuminatech/multipart-middleware)
 [![Total Downloads](https://img.shields.io/packagist/dt/illuminatech/multipart-middleware.svg)](https://packagist.org/packages/illuminatech/multipart-middleware)
-[![Build Status](https://travis-ci.org/illuminatech/multipart-middleware.svg?branch=master)](https://travis-ci.org/illuminatech/multipart-middleware)
+[![Build Status](https://github.com/illuminatech/multipart-middleware/workflows/build/badge.svg)](https://github.com/illuminatech/multipart-middleware/actions)
 
 
 Installation
