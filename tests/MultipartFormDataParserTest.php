@@ -11,10 +11,11 @@ class MultipartFormDataParserTest extends TestCase
 {
     /**
      * Creates test HTTP request instance.
+     *
      * @param  array  $headers
      * @param  string  $rawBody
      * @param  string  $method
-     * @return Request
+     * @return \Illuminate\Http\Request
      */
     protected function createRequest(array $headers, string $rawBody, string $method = 'PUT'): Request
     {
@@ -26,7 +27,8 @@ class MultipartFormDataParserTest extends TestCase
 
     /**
      * Creates dummy request handler for the middleware.
-     * @return Closure
+     *
+     * @return \Closure
      */
     protected function createDummyRequestHandler(): Closure
     {

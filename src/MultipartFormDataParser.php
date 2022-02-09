@@ -121,7 +121,7 @@ class MultipartFormDataParser
      */
     public function handle(Request $request, Closure $next, $force = false)
     {
-        if (! $force) {
+        if (!$force) {
             if ($request->getRealMethod() === 'POST' || count($request->files) > 0) {
                 // normal POST request is parsed by PHP automatically
                 return $next($request);
@@ -145,7 +145,7 @@ class MultipartFormDataParser
         if (stripos($contentType, 'multipart/form-data') === false) {
             return $request;
         }
-        if (! preg_match('/boundary=(.*)$/is', $contentType, $matches)) {
+        if (!preg_match('/boundary=(.*)$/is', $contentType, $matches)) {
             return $request;
         }
         $boundary = $matches[1];
@@ -169,7 +169,7 @@ class MultipartFormDataParser
             [$headers, $value] = preg_split('/\\R\\R/', $bodyPart, 2);
             $headers = $this->parseHeaders($headers);
 
-            if (! isset($headers['content-disposition']['name'])) {
+            if (!isset($headers['content-disposition']['name'])) {
                 continue;
             }
 
@@ -232,7 +232,7 @@ class MultipartFormDataParser
      * Creates new request instance from original one with parsed body parameters and uploaded files.
      * This method is called only in case original request has been successfully parsed as 'multipart/form-data'.
      *
-     * @param  \Illuminate\Http\Request  $originalRequest original request instance being parsed.
+     * @param  \Illuminate\Http\Request $originalRequest original request instance being parsed.
      * @param  array  $bodyParams parsed body parameters.
      * @param  array  $uploadedFiles parsed uploaded files.
      * @return \Illuminate\Http\Request new request instance.
@@ -321,7 +321,7 @@ class MultipartFormDataParser
                 $lastKey = array_pop($keys);
                 $current = &$current[$lastKey];
             } else {
-                if (! isset($current[$namePart])) {
+                if (!isset($current[$namePart])) {
                     $current[$namePart] = [];
                 }
                 $current = &$current[$namePart];
