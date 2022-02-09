@@ -1,6 +1,12 @@
 Multipart Request Parser Middleware Change Log
 ==============================================
 
+1.1.3 Under Development
+-----------------------
+
+- Enh: Added support for "illuminate/http" 9.0 (klimov-paul)
+
+
 1.1.2, September 9, 2020
 ------------------------
 
