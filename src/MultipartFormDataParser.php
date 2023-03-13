@@ -142,7 +142,7 @@ class MultipartFormDataParser
     public function parse(Request $request): Request
     {
         $contentType = $request->headers->get('CONTENT_TYPE');
-        if (stripos($contentType, 'multipart/form-data') === false) {
+        if (is_null($contentType) || stripos($contentType, 'multipart/form-data') === false) {
             return $request;
         }
         if (!preg_match('/boundary=(.*)$/is', $contentType, $matches)) {
