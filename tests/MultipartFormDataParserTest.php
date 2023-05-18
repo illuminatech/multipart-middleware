@@ -195,4 +195,15 @@ class MultipartFormDataParserTest extends TestCase
         ];
         $this->assertEquals($expectedBodyParams, $bodyParams);
     }
+
+    public function testEmptyContentTypeHeader()
+    {
+        $parser = new MultipartFormDataParser();
+
+        $request = $this->createRequest(['content-type' => []], 'body=test');
+
+        $parsedRequest = $parser->parse($request);
+
+        $this->assertSame($request, $parsedRequest);
+    }
 }

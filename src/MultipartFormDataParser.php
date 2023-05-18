@@ -142,6 +142,9 @@ class MultipartFormDataParser
     public function parse(Request $request): Request
     {
         $contentType = $request->headers->get('CONTENT_TYPE');
+        if (empty($contentType)) {
+            return $request;
+        }
         if (stripos($contentType, 'multipart/form-data') === false) {
             return $request;
         }

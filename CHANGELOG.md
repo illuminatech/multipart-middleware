@@ -1,6 +1,12 @@
 Multipart Request Parser Middleware Change Log
 ==============================================
 
+1.1.5 Under Development
+-----------------------
+
+- Bug #2: Fixed PHP Warning on absent "Content-Type" header in some environments (webinvader, klimov-paul)
+
+
 1.1.4, February 24, 2023
 ------------------------
 
