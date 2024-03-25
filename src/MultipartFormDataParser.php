@@ -12,7 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
 use Symfony\Component\HttpFoundation\FileBag;
-use Symfony\Component\HttpFoundation\ParameterBag;
+use Symfony\Component\HttpFoundation\InputBag;
 
 /**
  * MultipartFormDataParser is a middleware for parsing 'multipart/form-data' HTTP requests.
@@ -244,7 +244,7 @@ class MultipartFormDataParser
     {
         $request = clone $originalRequest;
 
-        $request->request = new ParameterBag($bodyParams);
+        $request->request = new InputBag($bodyParams);
         $request->files = new FileBag($uploadedFiles);
 
         return $request;
