@@ -44,28 +44,40 @@ This extension provides ability to parse 'multipart/form-data' HTTP requests for
 This allows REST client, interacting with your application, to use modern strict flow involving file uploading.
 
 It is provided via `\Illuminatech\MultipartMiddleware\MultipartFormDataParser` middleware.
-This middleware should be applied to your HTTP kernel prior to any other middleware, which operates input data.
+This middleware should be applied to your HTTP kernel prior to any other middleware, which operates input data,
+thus you will have to manually set the core middleware in your web application bootstrap.
 For example:
 
 ```php
 <?php
 
-namespace App\Http;
+use Illuminate\Foundation\Application;
+use Illuminate\Foundation\Configuration\Exceptions;
+use Illuminate\Foundation\Configuration\Middleware;
 
-use Illuminate\Foundation\Http\Kernel as HttpKernel;
-
-class Kernel extends HttpKernel
-{
-    protected $middleware = [
-        \App\Http\Middleware\CheckForMaintenanceMode::class,
-        \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
-        \Illuminatech\MultipartMiddleware\MultipartFormDataParser::class, // parse multipart request, before operating input
-        \App\Http\Middleware\TrimStrings::class,
-        \Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull::class,
+$app = Application::configure(basePath: dirname(__DIR__))
+    ->withRouting(
         // ...
-    ];
+    )
+    ->withMiddleware(function (Middleware $middleware) {
+        // we need to tap inside global middleware sequence in order to set up 'multipart/form-data' parser correctly:
+        $middleware->use([
+            \Illuminate\Foundation\Http\Middleware\InvokeDeferredCallbacks::class,
+            // \Illuminate\Http\Middleware\TrustHosts::class,
+            \Illuminate\Http\Middleware\TrustProxies::class,
+            \Illuminate\Http\Middleware\HandleCors::class,
+            \Illuminate\Foundation\Http\Middleware\PreventRequestsDuringMaintenance::class,
+            \Illuminate\Http\Middleware\ValidatePostSize::class,
+            \Illuminatech\MultipartMiddleware\MultipartFormDataParser::class, // parse multipart request, before operating input
+            \Illuminate\Foundation\Http\Middleware\TrimStrings::class,
+            \Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull::class,
+        ]);
+        // ...
+    })
     // ...
-}
+    ->create();
+
+return $app;
 ```
 
 `\Illuminatech\MultipartMiddleware\MultipartFormDataParser` will automatically parse any HTTP request with 'multipart/form-data'
