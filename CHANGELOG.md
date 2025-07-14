@@ -1,8 +1,8 @@
 Multipart Request Parser Middleware Change Log
 ==============================================
 
-1.1.8 Under Development
------------------------
+1.1.8, July 14, 2025
+--------------------
 
 - Bug #7: Fixed missing explicit nullable type hint at `MultipartFormDataParser::createUploadedFile()` for PHP 8.4 (stephandesouza)
 
